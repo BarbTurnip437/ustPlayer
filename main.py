@@ -1,4 +1,3 @@
-# main.py
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext, colorchooser
 import os
@@ -16,12 +15,17 @@ import ustplayer as up
 class UstxPlayerSettings:
     def __init__(self, root):  # 1. 去掉 play_callback 参数
         self.root = root
-        self.root.title("ustPlayer - v26a31")
+        self.root.title("ustPlayer - v26b06")
         self.root.geometry("800x500")
         # 2. 去掉 self.play_callback 赋值
         
-        # ========== 新增：配置文件相关 ==========
-        self.settings_path = "./Settings.ini"  # 配置文件路径（程序同目录）
+        # ========== 核心修改：固定Settings.ini到程序根目录 ==========
+        # 获取程序运行的根目录（绝对路径）
+        self.program_root = os.path.dirname(os.path.abspath(sys.argv[0]))
+        # 配置文件路径：程序根目录/Settings.ini（绝对路径）
+        self.settings_path = os.path.join(self.program_root, "Settings.ini")
+        # ==========================================================
+        
         self.config = configparser.ConfigParser()
         # 初始化默认路径（兜底值）
         self.last_open_dir = os.path.join(os.path.expanduser("~"), "Desktop")
@@ -427,7 +431,7 @@ class UstxPlayerSettings:
         ).grid(row=0, column=1, padx=cfg["global_padx"], pady=cfg["global_pady"], sticky=tk.W)
         ttk.Button(
             frame, text="导入项目", command=self.on_open, style=cfg["button_style"]
-        ).grid(row=0, column=0, padx=cfg["global_padx"], pady=cfg["global_pady"], sticky=tk.W)
+        ).grid(row=0, column=0, padx=cfg["global_padx"], pady=cfg["global_pady"], sticky=tk.E)
 
         # 分隔线
         ttk.Separator(frame, orient="horizontal").grid(
@@ -785,7 +789,7 @@ class UstxPlayerSettings:
         # 版权文本（蓝色下划线模拟超链接）
         copyright_label = ttk.Label(
             frame, 
-            text="ustPlayer-v26a31 (c)2026 SYEternalR", 
+            text="ustPlayer-v26b06 (c)2026 SYEternalR", 
             style=cfg["label_style"],
             foreground="#0066CC",
             cursor="hand2"  # 鼠标悬浮显示手型
@@ -819,11 +823,10 @@ class UstxPlayerSettings:
             padx=10, pady=cfg["global_pady"]
         )
 
-        # 文件转换按钮（跳转utaformatix.tk）
         ttk.Button(
             frame, 
-            text="ERcodes", 
-            command=lambda: subprocess.run(['notepad.exe', "ERcode.txt"], shell=True),
+            text="ERcodes纠错", 
+            command=self.open_ercode_file,  # 调用非阻塞函数
             style=cfg["button_style"]
         ).grid(
             row=4, column=1, sticky=tk.W, 
@@ -869,7 +872,7 @@ class UstxPlayerSettings:
         )
 
         tk.Label(frame, 
-                 text="你知道吗：alpha版本在提交托管时曾被错误地命名为ustPlyaer。orz"
+                 text="你知道吗：alpha版本在提交至托管时曾被错误地命名为ustPlyaer。orz"
                 ).grid(row=9,columnspan=3,  sticky=tk.W)
 
         # 让布局自适应拉伸
@@ -899,6 +902,21 @@ class UstxPlayerSettings:
             webbrowser.open(url, new=2)  # new=2 表示在新标签页打开
         except Exception as e:
             messagebox.showerror("ERcode003", f"打开网页失败：{str(e)}")
+
+    # ===== 打开ERcode.txt文件供用户纠错
+    def open_ercode_file(self):
+        """打开ERcode.txt文件，不阻塞主程序"""
+        # 获取ERcode.txt的绝对路径，避免路径错误
+        file_path = os.path.abspath("ERcode.txt")
+        # 使用Popen创建独立进程，不阻塞tkinter主线程
+        subprocess.Popen(
+            ['notepad.exe', file_path],
+            shell=True,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE
+        )
 
     # ===== 选择LRC文件函数 =====
     def select_lrc_file(self):
@@ -1056,5 +1074,3 @@ if __name__ == "__main__":
     root = tk.Tk() 
     userform = UstxPlayerSettings(root)
     root.mainloop()
-
-# 感谢你看到这里
