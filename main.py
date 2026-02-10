@@ -1,4 +1,4 @@
-# main
+# main.py
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext, colorchooser
 import os
@@ -7,49 +7,11 @@ import webbrowser
 import subprocess  
 import threading
 import configparser  # 新增：用于读写Settings.ini
-import winreg  # 新增：读取系统字体注册表（Windows专用）
 
 # 保留原代码的外部模块导入（ustreader、ustplayer，不做任何额外修改）
 import ustreader as ur
 import ustplayer as up
 
-# ========== 新增：获取Windows系统所有字体名称 ==========
-def get_system_fonts():
-    """
-    从Windows注册表读取已安装的字体名称（C:\Windows\Fonts对应注册表项）
-    返回：字体名称列表（去重、排序）
-    """
-    font_names = set()  # 用集合去重
-    try:
-        # 打开字体注册表项
-        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts")
-        i = 0
-        while True:
-            try:
-                # 遍历注册表值（格式："字体名称" = "字体文件名.ttf"）
-                name, _, _ = winreg.EnumValue(key, i)
-                i += 1
-                # 过滤掉文件名后缀，提取纯字体名（去掉 (TrueType)、(OpenType) 等后缀）
-                font_name = name.split(" (")[0].strip()
-                if font_name:
-                    font_names.add(font_name)
-            except OSError:
-                break
-        winreg.CloseKey(key)
-    except Exception as e:
-        print(f"读取系统字体失败：{e}")
-        # 兜底字体列表（至少包含等线）
-        font_names = {"等线", "微软雅黑", "宋体", "黑体", "Arial", "Times New Roman"}
-    
-    # 转为列表并排序，确保顺序固定
-    font_list = sorted(list(font_names))
-    # 确保“等线”在列表中（兜底）
-    if "等线" not in font_list:
-        font_list.insert(0, "等线")
-    return font_list
-
-# 获取系统字体列表（程序启动时执行一次）
-SYSTEM_FONTS = get_system_fonts()
 # ---------------------- userform.py 原始内容（修改 on_play_click，增加线程安全支持） ----------------------
 class UstxPlayerSettings:
     def __init__(self, root):  # 1. 去掉 play_callback 参数
@@ -101,7 +63,7 @@ class UstxPlayerSettings:
 
         # 播放器样式颜色变量（默认值）
         self.bg_color_var = tk.StringVar(value="#000000")       # 背景色：黑
-        self.note_color_var = tk.StringVar(value="#C3C3C3")     # 音名色：(195,195,195)
+        self.note_color_var = tk.StringVar(value="#6c6c6c")     # 音名色：(195,195,195)
         self.lyric_color_var = tk.StringVar(value="#FFFFFF")    # 歌字色：白
         self.lyric_text_color_var = tk.StringVar(value="#FFFFFF")# 歌词色：白
         self.other_text_color_var = tk.StringVar(value="#FFFFFF")# 其他文字色：白
@@ -638,101 +600,177 @@ class UstxPlayerSettings:
             frame, text="/ 播放器样式", style=cfg["label_style"], font=(cfg["font_family"], 11, "bold")
         ).grid(row=0, column=0, columnspan=3, sticky=tk.W, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # ========== 新增：字体选择下拉框（第一行） ==========
-        # 新增字体变量（默认值：等线）
-        self.font_choice_var = tk.StringVar(value="等线")
-        ttk.Label(frame, text="播放器字体:", style=cfg["label_style"]).grid(
-            row=1, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
-        # 字体下拉框（选项为系统所有字体）
-        font_combobox = ttk.Combobox(
-            frame, textvariable=self.font_choice_var,
-            values=SYSTEM_FONTS,  # 系统字体列表
-            state="readonly",    # 只读（防止手动输入）
-            font=(cfg["font_family"], cfg["font_size"])
-        )
-        font_combobox.grid(
-            row=1, column=1, columnspan=2, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
-        # ===================================================
-
-        # ---------------------- 颜色选择行（原有row+1） ----------------------
-        # 背景色（原row=1 → 新row=2）
+        # ---------------------- 颜色选择行 ----------------------
+        # 背景色
         ttk.Label(frame, text="背景色:", style=cfg["label_style"]).grid(
-            row=2, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=1, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Entry(
             frame, textvariable=self.bg_color_var, width=10, style=cfg["entry_style"]
         ).grid(
-            row=2, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=1, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Button(
             frame, text="更改", command=lambda: self.choose_color(self.bg_color_var), style=cfg["button_style"]
-        ).grid(row=2, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ).grid(row=1, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # 音名色（原row=2 → 新row=3）
+        # 音名色
         ttk.Label(frame, text="音名色:", style=cfg["label_style"]).grid(
-            row=3, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=2, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Entry(
             frame, textvariable=self.note_color_var, width=10, style=cfg["entry_style"]
         ).grid(
-            row=3, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=2, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Button(
             frame, text="更改", command=lambda: self.choose_color(self.note_color_var), style=cfg["button_style"]
-        ).grid(row=3, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ).grid(row=2, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # 歌字色（原row=3 → 新row=4）
+        # 歌字色
         ttk.Label(frame, text="歌字色:", style=cfg["label_style"]).grid(
-            row=4, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=3, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Entry(
             frame, textvariable=self.lyric_color_var, width=10, style=cfg["entry_style"]
         ).grid(
-            row=4, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=3, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Button(
             frame, text="更改", command=lambda: self.choose_color(self.lyric_color_var), style=cfg["button_style"]
-        ).grid(row=4, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ).grid(row=3, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # 歌词色（原row=4 → 新row=5）
+        # 歌词色
         ttk.Label(frame, text="歌词色:", style=cfg["label_style"]).grid(
-            row=5, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=4, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Entry(
             frame, textvariable=self.lyric_text_color_var, width=10, style=cfg["entry_style"]
         ).grid(
-            row=5, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=4, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Button(
             frame, text="更改", command=lambda: self.choose_color(self.lyric_text_color_var), style=cfg["button_style"]
-        ).grid(row=5, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ).grid(row=4, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # 其他文字色（原row=5 → 新row=6）
+        # 其他文字色
         ttk.Label(frame, text="其他文字色:", style=cfg["label_style"]).grid(
-            row=6, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=5, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Entry(
             frame, textvariable=self.other_text_color_var, width=10, style=cfg["entry_style"]
         ).grid(
-            row=6, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=5, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Button(
             frame, text="更改", command=lambda: self.choose_color(self.other_text_color_var), style=cfg["button_style"]
-        ).grid(row=6, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ).grid(row=5, column=2, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # 歌词位置（原row=6 → 新row=7）
+        # 歌词位置
         ttk.Label(frame, text="歌词位置:", style=cfg["label_style"]).grid(
-            row=7, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=6, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
         ttk.Combobox(
             frame, textvariable=self.lyric_pos_var,
             values=["上", "下"],
             state="readonly",
             font=(cfg["font_family"], cfg["font_size"])
         ).grid(
-            row=7, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=6, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # ---------------------- 分隔线（原row=7 → 新row=8） ----------------------
+        # ---------------------- 分隔线 ----------------------
         ttk.Separator(frame, orient="horizontal").grid(
-            row=8, column=0, columnspan=3, sticky=tk.EW, padx=cfg["global_padx"], pady=cfg["global_pady"])
+            row=7, column=0, columnspan=3, sticky=tk.EW, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # 其他显示设置标题（原row=12 → 新row=13）
+        """# ---------------------- 显示选项（勾选框） ----------------------
+        ttk.Label(
+            frame, text="- 显示选项 -", style=cfg["label_style"], font=(cfg["font_family"], 11, "bold")
+        ).grid(row=8, column=0, columnspan=3, sticky=tk.W, padx=cfg["global_padx"], pady=cfg["global_pady"])
+
+        # 显示音素
+        tk.Checkbutton(frame, text="显示音素", variable=self.show_phoneme_var,
+                      font=(cfg["font_family"], cfg["font_size"]), bg="white").grid(
+            row=9, column=0, sticky=tk.W, padx=10, pady=cfg["global_pady"])
+        # 显示midinote
+        tk.Checkbutton(frame, text="显示midinote", variable=self.show_midinote_var,
+                      font=(cfg["font_family"], cfg["font_size"]), bg="white").grid(
+            row=9, column=1, sticky=tk.W, padx=10, pady=cfg["global_pady"])
+        # 显示波形
+        tk.Checkbutton(frame, text="显示波形", variable=self.show_waveform_var,
+                      font=(cfg["font_family"], cfg["font_size"]), bg="white").grid(
+            row=10, column=0, sticky=tk.W, padx=10, pady=cfg["global_pady"])
+        # 全屏显示
+        tk.Checkbutton(frame, text="全屏显示", variable=self.fullscreen_var,
+                      font=(cfg["font_family"], cfg["font_size"]), bg="white").grid(
+            row=10, column=1, sticky=tk.W, padx=10, pady=cfg["global_pady"])"""
+
+        """# ---------------------- 【新增】静默/结束时显示设置 ----------------------
+        # 分隔线
+        ttk.Separator(frame, orient="horizontal").grid(
+            row=11, column=0, columnspan=3, sticky=tk.EW, padx=cfg["global_padx"], pady=cfg["global_pady"])"""
+
+        # 标题
         ttk.Label(
             frame, text="/ 其他显示设置", style=cfg["label_style"], font=(cfg["font_family"], 11, "bold")
-        ).grid(row=13, column=0, columnspan=3, sticky=tk.W, padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ).grid(row=12, column=0, columnspan=3, sticky=tk.W, padx=cfg["global_padx"], pady=cfg["global_pady"])
 
-        # 音高占位符（原row=13 → 新row=14）
+        # 1. 音高见占位符（下拉框）
         ttk.Label(frame, text="音高见占位符:", style=cfg["label_style"]).grid(
+            row=13, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ttk.Combobox(
+            frame, textvariable=self.pitch_placeholder_var,
+            values=["无", "-", "自定义文字"],
+            state="readonly",
+            font=(cfg["font_family"], cfg["font_size"])
+        ).grid(
+            row=13, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        # 绑定下拉选择事件
+        self.pitch_placeholder_var.trace("w", self.update_pitch_custom_entry)
+
+        # 2. 自定义音高占位符文字（输入框，默认隐藏）
+        self.pitch_custom_entry = ttk.Entry(
+            frame, textvariable=self.pitch_custom_text_var, width=20, style=cfg["entry_style"]
+        )
+        # 初始隐藏
+        self.pitch_custom_entry.grid(
+            row=13, column=2, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        self.pitch_custom_entry.grid_remove()  # 隐藏
+
+        # 3. 静默时显示（下拉框）
+        ttk.Label(frame, text="静默时显示:", style=cfg["label_style"]).grid(
             row=14, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ttk.Combobox(
+            frame, textvariable=self.silent_display_var,
+            values=["R", "-", "自定义文字", "什么都不显示"],
+            state="readonly",
+            font=(cfg["font_family"], cfg["font_size"])
+        ).grid(
+            row=14, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        # 绑定下拉选择事件
+        self.silent_display_var.trace("w", self.update_silent_custom_entry)
+
+        # 4. 自定义静默文字（输入框，默认隐藏）
+        self.silent_custom_entry = ttk.Entry(
+            frame, textvariable=self.silent_custom_text_var, width=20, style=cfg["entry_style"]
+        )
+        # 初始隐藏
+        self.silent_custom_entry.grid(
+            row=14, column=2, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        self.silent_custom_entry.grid_remove()  # 隐藏
+
+        # 5. 结束时显示（下拉框）
+        ttk.Label(frame, text="结束时显示:", style=cfg["label_style"]).grid(
+            row=15, column=0, sticky=cfg["label_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        ttk.Combobox(
+            frame, textvariable=self.end_display_var,
+            values=["END", "-", "自定义文字", "什么都不显示"],
+            state="readonly",
+            font=(cfg["font_family"], cfg["font_size"])
+        ).grid(
+            row=15, column=1, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        # 绑定下拉选择事件
+        self.end_display_var.trace("w", self.update_end_custom_entry)
+
+        # 6. 自定义结束文字（输入框，默认隐藏）
+        self.end_custom_entry = ttk.Entry(
+            frame, textvariable=self.end_custom_text_var, width=20, style=cfg["entry_style"]
+        )
+        # 初始隐藏
+        self.end_custom_entry.grid(
+            row=15, column=2, sticky=cfg["entry_sticky"], padx=cfg["global_padx"], pady=cfg["global_pady"])
+        self.end_custom_entry.grid_remove()  # 隐藏
+
+        # 让布局自适应拉伸
+        frame.grid_columnconfigure(1, weight=1)
 
     # ===== 歌词标签页实现 =====
     def setup_lyric_tab(self, parent_frame):
@@ -788,7 +826,7 @@ class UstxPlayerSettings:
         # 版权文本（蓝色下划线模拟超链接）
         copyright_label = ttk.Label(
             frame, 
-            text="ustPlayer-v26b10 (c)2026 SYEternalR", 
+            text="ustPlayer-v26b10 (c) 2026 SYEternalR", 
             style=cfg["label_style"],
             foreground="#0066CC",
             cursor="hand2"  # 鼠标悬浮显示手型
@@ -936,7 +974,6 @@ class UstxPlayerSettings:
         try:
             # 检查文件是否存在
             if not os.path.exists(self.terms_file_path):
-                # 文件不存在时创建空文件
                 pass
             
             # 使用Popen创建独立进程，不阻塞tkinter主线程
