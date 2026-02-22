@@ -8,7 +8,7 @@ import configparser  # 新增：用于读写Settings.ini
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext, colorchooser
 
-from hidpi_tk import fix_HiDPI
+from hidpi_tk import DPIAwareTk
 
 import ustreader as ur
 import ustplayer as up
@@ -1145,7 +1145,7 @@ def play_ust(ust_info, root, safe_display_func):
 
 # ---------------------- 程序入口 ----------------------
 if __name__ == "__main__":
-    root = tk.Tk()
-    fix_HiDPI(root)
+    root = DPIAwareTk()
     userform = UstxPlayerSettings(root)
+
     root.mainloop()
